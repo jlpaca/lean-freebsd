@@ -8,6 +8,7 @@ Author: Gabriel Ebner
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cstdarg>
 #include "util/utf8.h"
 #include "util/lean_path.h"
 #include "util/file_lock.h"
@@ -43,6 +44,7 @@ environment module_info::get_latest_env() const {
 }
 
 void module_mgr::mark_out_of_date(module_id const & id) {
+    std::cout << "Marking rdeps of " << id << " out of date." << std::endl;
     for (auto & mod : m_modules) {
         if (!mod.second || mod.second->m_out_of_date) continue;
         for (auto & dep : mod.second->m_deps) {
@@ -142,7 +144,22 @@ module_id module_mgr::resolve(module_name const & n, module_id const & cur_mod) 
     return lean::resolve(m_path, cur_mod, n);
 }
 
-void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set module_stack) {
+static void lprintf(int lvl, const char* msg, ...) {
+    std::string indent = {};
+    for (int i = 0; i < lvl; i++) {
+        indent += "  ";
+    }
+    indent += msg;
+
+    va_list argptr;
+    va_start(argptr, msg);
+    vfprintf(stdout, indent.c_str(), argptr);
+    va_end(argptr);
+}
+
+#define LPRINTF(...) lprintf(lvl, __VA_ARGS__);
+
+void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set module_stack, int lvl) {
     if (auto & existing_mod = m_modules[id])
         if (!existing_mod->m_out_of_date) return;
 
@@ -184,7 +201,7 @@ void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set
 
             for (auto & d : parsed_olean.m_imports) {
                 auto d_id = resolve(d, id);
-                build_module(d_id, true, module_stack);
+                build_module(d_id, true, module_stack, lvl+1);
 
                 auto & d_mod = m_modules[d_id];
                 mod->m_deps.push_back({ d_id, d, d_mod });
@@ -193,8 +210,9 @@ void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set
 
             // If anything in the reflexive-transitive closure of this module under the import relation
             // has changed, rebuild the module.
-            if (mod->m_trans_hash != actual_trans_hash && !m_use_old_oleans)
-                return build_module(id, false, orig_module_stack);
+            if (mod->m_trans_hash != actual_trans_hash && !m_use_old_oleans) {
+                return build_module(id, false, orig_module_stack, lvl);
+            }
 
             module_info::parse_result res;
 
@@ -212,7 +230,7 @@ void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set
                 cancel(old_mod->m_cancel);
             m_modules[id] = mod;
         } else if (mod->m_source == module_src::LEAN) {
-            build_lean(mod, module_stack);
+            build_lean(mod, module_stack,lvl+1);
             m_modules[id] = mod;
         } else {
             throw exception("unknown module source");
@@ -225,7 +243,7 @@ void module_mgr::build_module(module_id const & id, bool can_use_olean, name_set
     }
 }
 
-void module_mgr::build_lean(std::shared_ptr<module_info> const & mod, name_set const & module_stack) {
+void module_mgr::build_lean(std::shared_ptr<module_info> const & mod, name_set const & module_stack, int lvl) {
     auto id = mod->m_id;
     auto & lt = logtree();
     auto end_pos = find_end_pos(mod->m_contents);
@@ -240,7 +258,7 @@ void module_mgr::build_lean(std::shared_ptr<module_info> const & mod, name_set c
         std::shared_ptr<module_info const> d_mod;
         try {
             d_id = resolve(d, id);
-            build_module(d_id, true, module_stack);
+            build_module(d_id, true, module_stack, lvl+1);
             d_mod = m_modules[d_id];
             mod->m_trans_hash = hash(mod->m_trans_hash, d_mod->m_trans_hash);
         } catch (throwable & ex) {
@@ -380,7 +398,9 @@ void module_mgr::invalidate(module_id const & id) {
         try {
             // HACK(gabriel): On windows vscode sends different line endings than the on-disk version.
             // This causes the server to recompile all files even when just hovering.
-            if (equal_upto_cr(m_vfs->load_module(id, false)->m_contents, mod->m_contents)) {
+            bool isSameAsOnDisk = equal_upto_cr(m_vfs->load_module(id, false)->m_contents, mod->m_contents);
+            std::cout << "isSameAsOnDisk = " << isSameAsOnDisk << " for " << id << std::endl;
+            if (isSameAsOnDisk) {
                 // content unchanged
                 rebuild_rdeps = false;
             }
@@ -399,6 +419,7 @@ void module_mgr::invalidate(module_id const & id) {
             to_rebuild.push_back(mod.first);
     }
     for (auto & i : to_rebuild) {
+        std::cout << "Rebuilding module " << i << std::endl;
         try {
             build_module(i, true, {});
         } catch (...) {}

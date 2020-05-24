@@ -588,8 +588,8 @@ optional<unsigned> src_hash_if_is_candidate_olean(std::string const & file_name)
         return {};
     d1 >> version;
 #ifndef LEAN_IGNORE_OLEAN_VERSION
-    if (version != get_version_string())
-        return {};
+    /*if (version != get_version_string())
+        return {};*/
 #endif
     unsigned olean_src_hash;
     d1 >> olean_src_hash;

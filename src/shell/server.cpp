@@ -497,11 +497,14 @@ server::cmd_res server::handle_sync(server::cmd_req const & req) {
     bool needs_invalidation = true;
 
     auto & ef = m_open_files[new_file_name];
+    std::cout << "Loading open file " << new_file_name << std::endl;
     if (ef.m_src_hash != new_hash) {
+        std::cout << "Hash changed (" << ef.m_src_hash << " -> " << new_hash << "). Invalidating" << std::endl;
         ef.m_content = new_content;
         ef.m_src_hash = new_hash;
         needs_invalidation = true;
     } else {
+        std::cout << "Same hash (" << ef.m_src_hash << ")" << std::endl;
         needs_invalidation = false;
     }
 

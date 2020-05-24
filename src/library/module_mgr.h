@@ -105,10 +105,10 @@ class module_mgr {
     std::unordered_map<module_id, std::shared_ptr<module_info>> m_modules;
 
     void mark_out_of_date(module_id const & id);
-    void build_module(module_id const & id, bool can_use_olean, name_set module_stack);
+    void build_module(module_id const & id, bool can_use_olean, name_set module_stack, int lvl = 0);
 
     std::vector<module_name> get_direct_imports(module_id const & id, std::string const & contents);
-    void build_lean(std::shared_ptr<module_info> const & mod, name_set const & module_stack);
+    void build_lean(std::shared_ptr<module_info> const & mod, name_set const & module_stack, int lvl = 0);
     std::pair<cancellation_token, module_parser_result>
     build_lean_snapshots(std::shared_ptr<module_parser> const & mod_parser,
                          std::shared_ptr<module_info> const & old_mod, std::vector<gtask> const & deps,

@@ -2,14 +2,14 @@ prelude
 import init.data.nat.basic init.data.string.basic
 
 def lean.version : nat × nat × nat :=
-(@LEAN_VERSION_MAJOR@, @LEAN_VERSION_MINOR@, @LEAN_VERSION_PATCH@)
+(3, 14, 0)
 
 def lean.githash : string :=
-"@GIT_SHA1@"
+"0947586ef2af0c5d9ceee084893b6d8ce5ae458c"
 
 def lean.is_release : bool :=
-@LEAN_VERSION_IS_RELEASE@ ≠ 0
+1 ≠ 0
 
 /-- Additional version description like "nightly-2018-03-11" -/
 def lean.special_version_desc : string :=
-"@LEAN_SPECIAL_VERSION_DESC@"
+""
