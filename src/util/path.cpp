@@ -72,12 +72,34 @@ std::string get_exe_location() {
     return std::string(buf2);
 }
 bool is_path_sep(char c) { return c == g_path_sep; }
-#else
-// Linux version
+#elif defined(__FreeBSD__)
+// FreeBSD version
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include <string.h>
 #include <limits.h> // NOLINT
 #include <stdio.h>
+static char g_path_sep     = ':';
+static constexpr char g_sep          = '/';
+static char g_bad_sep      = '\\';
+std::string get_exe_location() {
+  char dest[PATH_MAX];
+  memset(dest, 0, PATH_MAX);
+  size_t cb = sizeof(dest);
+  int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+  if (sysctl(mib, 4, dest, &cb, NULL, 0) == -1) {
+        throw exception("failed to locate Lean executable location");
+  }
+  return std::string(dest);
+}
+bool is_path_sep(char c) { return c == g_path_sep; }
+#else
+// Linux version
+#include <unistd.h> // NOLINT
+#include <string.h> // NOLINT
+#include <limits.h> // NOLINT
+#include <stdio.h>  // NOLINT
 static char g_path_sep     = ':';
 static constexpr char g_sep          = '/';
 static char g_bad_sep      = '\\';

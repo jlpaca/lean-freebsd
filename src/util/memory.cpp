@@ -91,6 +91,8 @@ size_t get_current_rss() {
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &infoCount) != KERN_SUCCESS)
         return static_cast<size_t>(0);
     return static_cast<size_t>(info.resident_size);
+#elif defined(__FreeBSD__)
+    return 0; // TODO: implement this.
 #else
     long rss  = 0;
     FILE * fp = nullptr;
